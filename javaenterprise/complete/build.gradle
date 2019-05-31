@@ -1,0 +1,89 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        //classpath("org.springframework.boot:spring-boot-gradle-plugin")
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:2.1.4.RELEASE")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+bootJar {
+    baseName = 'gs-accessing-data-jpa'
+    version =  '0.1.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+def generatedSourcesOutput = "$buildDir/generated/main/java"
+
+sourceSets {
+    main {
+        java{
+            srcDirs "$buildDir/../generated/src/main/java"
+        }
+    }
+}
+
+configurations {
+    jaxb
+}
+
+dependencies {
+    jaxb  'javax.xml.bind:jaxb-api:2.2.11'
+    jaxb  'com.sun.xml.bind:jaxb-xjc:2.2.11'
+    jaxb  'com.sun.xml.bind:jaxb-impl:2.2.11'
+    jaxb  'com.sun.xml.bind:jaxb-osgi:2.2.11'
+
+    compile 'com.sun.xml.bind:jaxb-xjc:2.2.11'
+    compile 'com.sun.xml.bind:jaxb-impl:2.2.11'
+    compile 'org.glassfish.jaxb:jaxb-runtime:2.2.11'
+    compile 'javax.xml.bind:jaxb-api:2.2.11'
+}
+
+task generateSources() {
+    doLast {
+        def jaxbTargetDir = file("$buildDir/../generated/src/main/java")
+
+        if (!jaxbTargetDir.exists()) {
+            jaxbTargetDir.mkdirs()
+        }
+
+        ant.taskdef(name: 'xjc', classname: 'com.sun.tools.xjc.XJCTask', classpath: configurations.jaxb.asPath)
+
+        ant.xjc(
+                destdir: "${jaxbTargetDir}",
+                schema: "${projectDir}/osm.xsd",
+                removeOldOutput: 'yes', extension: 'true'
+        )
+                {
+                    arg(line: '-nv -disableXmlSecurity')
+                }
+    }
+}
+
+compileJava {
+    dependsOn generateSources
+}
+
+dependencies {
+    compile("org.springframework.boot:spring-boot-starter-data-jpa")
+    compile("org.springframework.boot:spring-boot-starter-web")
+
+    compile group: 'org.apache.commons', name: 'commons-compress', version: '1.1'
+
+    compile 'org.postgresql:postgresql'
+    testCompile("org.springframework.boot:spring-boot-starter-test")
+}
+
